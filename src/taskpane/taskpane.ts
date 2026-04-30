@@ -9,7 +9,7 @@ interface AdminConfig {
 }
 
 const SETTINGS_KEY = "autosave_interval_minutes";
-const VERSION = "1.0.1";
+const VERSION = "1.0.2";
 
 // State lives on `window` so it survives script re-evaluation when the task
 // pane HTML is reloaded inside the same shared runtime. Module-level `let`
@@ -182,13 +182,9 @@ async function performSave(): Promise<void> {
         context.workbook.save(Excel.SaveBehavior.save);
         await context.sync();
       });
-    } else if (host === Office.HostType.Word) {
-      await Word.run(async (context) => {
-        context.document.save();
-        await context.sync();
-      });
     } else {
-      // PowerPoint — saveAsync exists at runtime but is absent from @types/office-js
+      // Word and PowerPoint — saveAsync works reliably in headless background
+      // contexts where Word.run() / the Word JS API may not be fully available.
       await new Promise<void>((resolve, reject) => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (Office.context.document as any).saveAsync((result: Office.AsyncResult<void>) => {
@@ -211,11 +207,24 @@ async function performSave(): Promise<void> {
 
     log("Save succeeded");
     state.lastSaved = new Date().toLocaleTimeString();
+    // Persist to document settings so the task pane shows the correct time
+    // even after it has been closed and reopened (fresh window context).
+    try {
+      Office.context.document.settings.set("__as_lastSaved", state.lastSaved);
+      Office.context.document.settings.set("__as_lastError", "");
+      Office.context.document.settings.saveAsync(() => {});
+    } catch { /* non-critical */ }
     clearNotification();
     setText("last-saved-value", state.lastSaved);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     log(`Save failed: ${message}`);
+    // Persist error so it surfaces in the task pane next time it opens,
+    // making silent background failures visible.
+    try {
+      Office.context.document.settings.set("__as_lastError", message);
+      Office.context.document.settings.saveAsync(() => {});
+    } catch { /* non-critical */ }
     setNotification(t("save_error"), "error");
   }
 }
@@ -266,6 +275,16 @@ async function initBackground(): Promise<void> {
 
   state.intervalMinutes = loadUserInterval(cfg);
   state.enabled = true;
+
+  // Restore last-saved time from settings — survives task pane reloads and
+  // makes background saves visible when the task pane is opened later.
+  try {
+    const persisted = Office.context.document.settings.get("__as_lastSaved") as string | null;
+    if (persisted) state.lastSaved = persisted;
+    const bgError = Office.context.document.settings.get("__as_lastError") as string | null;
+    if (bgError) log(`Background error from previous session: ${bgError}`);
+  } catch { /* non-critical */ }
+
   state.initialized = true;
 
   if (!state.isReadOnly) {
@@ -354,14 +373,12 @@ function wireEvents(): void {
 // as soon as the shared runtime loads for OnDocumentOpen.
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-(Office as any).actions?.associate("onDocumentOpen", async (event: any) => {
-  log("OnDocumentOpen event received");
-  try {
-    await initBackground();
-  } catch (err) {
-    log(`onDocumentOpen init error: ${err}`);
-  }
+(Office as any).actions?.associate("onDocumentOpen", (event: any) => {
+  // Complete the event immediately — with lifetime="long" the runtime stays
+  // alive after event.completed(), so we can do async work afterwards.
+  // Awaiting initBackground() before completing caused handler timeouts.
   event.completed();
+  initBackground().catch((err) => log(`onDocumentOpen init error: ${err}`));
 });
 
 // ── Initialization ────────────────────────────────────────────────────────────
