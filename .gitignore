@@ -9,6 +9,7 @@ certs/
 
 # Claude Code local settings
 .claude/
+CLAUDE.md
 
 # Windows dev utility (not needed in the repo)
 clear-office-cache.bat
