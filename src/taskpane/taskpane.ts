@@ -9,7 +9,7 @@ interface AdminConfig {
 }
 
 const SETTINGS_KEY = "autosave_interval_minutes";
-const VERSION = "1.0.3";
+const VERSION = "1.0.4";
 
 // State lives on `window` so it survives script re-evaluation when the task
 // pane HTML is reloaded inside the same shared runtime. Module-level `let`
@@ -144,6 +144,16 @@ function saveUserInterval(minutes: number): void {
 
 async function hasFilePath(): Promise<boolean> {
   if (state.confirmedFilePath) return true;
+
+  // Excel.SaveBehavior.save throws a catchable error for unsaved workbooks
+  // instead of prompting — no need to pre-check the path.
+  // getFilePropertiesAsync also returns an empty URL for local Excel files
+  // in some Office builds, causing false negatives.
+  if (Office.context.host === Office.HostType.Excel) {
+    state.confirmedFilePath = true;
+    return true;
+  }
+
   return new Promise<boolean>((resolve) => {
     try {
       Office.context.document.getFilePropertiesAsync((result) => {
