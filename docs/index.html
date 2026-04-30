@@ -1,0 +1,903 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AutoSave for Office — Never Lose Your Work</title>
+  <meta name="description" content="A production-ready Microsoft Office Web Add-in that automatically saves Word, Excel, and PowerPoint documents at a configurable interval. Built for enterprise IT teams." />
+  <meta property="og:title" content="AutoSave for Office" />
+  <meta property="og:description" content="Automatic document saving for Word, Excel, and PowerPoint. IT-friendly, multi-language, zero infrastructure." />
+  <meta property="og:type" content="website" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --blue:        #0078d4;
+      --blue-dark:   #005a9e;
+      --blue-light:  #deecf9;
+      --teal:        #00b294;
+      --teal-dark:   #008272;
+      --red:         #d13438;
+      --yellow:      #ffb900;
+      --neutral-100: #f3f2f1;
+      --neutral-200: #edebe9;
+      --neutral-600: #605e5c;
+      --neutral-800: #323130;
+      --neutral-900: #201f1e;
+      --white:       #ffffff;
+      --shadow-sm:   0 2px 8px rgba(0,0,0,.08);
+      --shadow-md:   0 4px 20px rgba(0,0,0,.12);
+      --shadow-lg:   0 8px 40px rgba(0,0,0,.16);
+      --radius:      8px;
+      --radius-lg:   16px;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+      font-size: 16px;
+      line-height: 1.6;
+      color: var(--neutral-800);
+      background: var(--white);
+    }
+
+    /* ── NAV ─────────────────────────────────────── */
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(255,255,255,.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--neutral-200);
+    }
+
+    .nav-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 24px;
+      height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .nav-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 700;
+      font-size: 1.05rem;
+      color: var(--neutral-900);
+      text-decoration: none;
+    }
+
+    .nav-logo svg { flex-shrink: 0; }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 28px;
+      list-style: none;
+    }
+
+    .nav-links a {
+      color: var(--neutral-600);
+      text-decoration: none;
+      font-size: .9rem;
+      transition: color .15s;
+    }
+
+    .nav-links a:hover { color: var(--blue); }
+
+    .nav-cta {
+      background: var(--blue);
+      color: var(--white) !important;
+      padding: 7px 18px;
+      border-radius: var(--radius);
+      font-weight: 600;
+      transition: background .15s !important;
+    }
+
+    .nav-cta:hover { background: var(--blue-dark) !important; }
+
+    /* ── HERO ─────────────────────────────────────── */
+    .hero {
+      background: linear-gradient(135deg, #0063b1 0%, #0078d4 50%, #106ebe 100%);
+      color: var(--white);
+      padding: 100px 24px 120px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.04'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    }
+
+    .hero-inner {
+      max-width: 780px;
+      margin: 0 auto;
+      position: relative;
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(255,255,255,.15);
+      border: 1px solid rgba(255,255,255,.25);
+      border-radius: 20px;
+      padding: 5px 14px;
+      font-size: .8rem;
+      font-weight: 600;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+      margin-bottom: 24px;
+    }
+
+    .hero-badge span { width: 7px; height: 7px; background: #6fff9e; border-radius: 50%; animation: pulse 2s ease-in-out infinite; }
+
+    @keyframes pulse { 0%,100% { opacity: 1; transform: scale(1); } 50% { opacity: .6; transform: scale(1.3); } }
+
+    .hero h1 {
+      font-size: clamp(2.2rem, 5vw, 3.4rem);
+      font-weight: 700;
+      line-height: 1.15;
+      margin-bottom: 20px;
+      letter-spacing: -.02em;
+    }
+
+    .hero h1 em {
+      font-style: normal;
+      background: linear-gradient(90deg, #a8d8ff, #c3ffee);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero-sub {
+      font-size: 1.15rem;
+      opacity: .88;
+      max-width: 560px;
+      margin: 0 auto 40px;
+      line-height: 1.7;
+    }
+
+    .hero-actions {
+      display: flex;
+      gap: 14px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 26px;
+      border-radius: var(--radius);
+      font-weight: 600;
+      font-size: .95rem;
+      text-decoration: none;
+      transition: transform .15s, box-shadow .15s, background .15s;
+      cursor: pointer;
+    }
+
+    .btn:hover { transform: translateY(-1px); box-shadow: var(--shadow-md); }
+    .btn:active { transform: translateY(0); }
+
+    .btn-primary {
+      background: var(--white);
+      color: var(--blue);
+    }
+
+    .btn-primary:hover { background: var(--blue-light); }
+
+    .btn-secondary {
+      background: rgba(255,255,255,.15);
+      color: var(--white);
+      border: 1.5px solid rgba(255,255,255,.4);
+    }
+
+    .btn-secondary:hover { background: rgba(255,255,255,.25); }
+
+    .hero-stats {
+      display: flex;
+      justify-content: center;
+      gap: 48px;
+      margin-top: 64px;
+      flex-wrap: wrap;
+    }
+
+    .stat { text-align: center; }
+    .stat-value { font-size: 2rem; font-weight: 700; line-height: 1; }
+    .stat-label { font-size: .8rem; opacity: .7; margin-top: 4px; letter-spacing: .03em; text-transform: uppercase; }
+
+    /* ── SECTION SHELL ────────────────────────────── */
+    section { padding: 80px 24px; }
+    .section-inner { max-width: 1100px; margin: 0 auto; }
+
+    .section-tag {
+      display: inline-block;
+      font-size: .75rem;
+      font-weight: 700;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--blue);
+      margin-bottom: 10px;
+    }
+
+    .section-title {
+      font-size: clamp(1.6rem, 3vw, 2.2rem);
+      font-weight: 700;
+      color: var(--neutral-900);
+      margin-bottom: 14px;
+      letter-spacing: -.015em;
+    }
+
+    .section-lead {
+      color: var(--neutral-600);
+      max-width: 580px;
+      font-size: 1.05rem;
+      line-height: 1.7;
+      margin-bottom: 56px;
+    }
+
+    /* ── FEATURES GRID ────────────────────────────── */
+    #features { background: var(--neutral-100); }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 20px;
+    }
+
+    .feature-card {
+      background: var(--white);
+      border-radius: var(--radius-lg);
+      padding: 28px;
+      box-shadow: var(--shadow-sm);
+      border: 1px solid var(--neutral-200);
+      transition: box-shadow .2s, transform .2s;
+    }
+
+    .feature-card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
+
+    .feature-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: var(--radius);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 18px;
+    }
+
+    .icon-blue   { background: var(--blue-light); color: var(--blue); }
+    .icon-teal   { background: #d7f8f3; color: var(--teal-dark); }
+    .icon-purple { background: #ede7f6; color: #6200ea; }
+    .icon-orange { background: #fff3e0; color: #e65100; }
+    .icon-red    { background: #fce8e8; color: var(--red); }
+    .icon-yellow { background: #fff8e1; color: #f57f17; }
+
+    .feature-card h3 { font-size: 1.05rem; font-weight: 700; margin-bottom: 8px; }
+    .feature-card p  { color: var(--neutral-600); font-size: .92rem; line-height: 1.65; }
+
+    .feature-hosts {
+      display: flex;
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    .host-pill {
+      font-size: .72rem;
+      font-weight: 600;
+      padding: 3px 10px;
+      border-radius: 12px;
+      letter-spacing: .02em;
+    }
+
+    .pill-word   { background: #deecf9; color: #005a9e; }
+    .pill-excel  { background: #d7f8ee; color: #0e6b3c; }
+    .pill-ppt    { background: #fce8e0; color: #c13600; }
+
+    /* ── HOW IT WORKS ─────────────────────────────── */
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 0;
+      position: relative;
+    }
+
+    .steps::before {
+      content: "";
+      position: absolute;
+      top: 30px;
+      left: 8%;
+      right: 8%;
+      height: 2px;
+      background: linear-gradient(90deg, var(--blue-light), var(--blue), var(--blue-light));
+      z-index: 0;
+    }
+
+    .step {
+      text-align: center;
+      padding: 0 24px 0;
+      position: relative;
+      z-index: 1;
+    }
+
+    .step-num {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background: var(--blue);
+      color: var(--white);
+      font-size: 1.3rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 20px;
+      box-shadow: 0 0 0 6px var(--blue-light);
+    }
+
+    .step h3 { font-size: 1rem; font-weight: 700; margin-bottom: 8px; }
+    .step p  { color: var(--neutral-600); font-size: .88rem; line-height: 1.6; }
+
+    /* ── CONFIG SECTION ───────────────────────────── */
+    #config { background: var(--neutral-900); color: var(--white); }
+    #config .section-tag { color: #6fff9e; }
+    #config .section-title { color: var(--white); }
+    #config .section-lead { color: rgba(255,255,255,.7); }
+
+    .config-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 48px;
+      align-items: start;
+    }
+
+    @media (max-width: 720px) { .config-grid { grid-template-columns: 1fr; } }
+
+    .config-table { width: 100%; border-collapse: collapse; }
+
+    .config-table th,
+    .config-table td {
+      padding: 12px 14px;
+      text-align: left;
+      border-bottom: 1px solid rgba(255,255,255,.1);
+      font-size: .88rem;
+    }
+
+    .config-table th { color: rgba(255,255,255,.5); font-weight: 600; font-size: .78rem; letter-spacing: .06em; text-transform: uppercase; }
+    .config-table td { color: rgba(255,255,255,.85); }
+    .config-table td:first-child { font-family: "Cascadia Code", "Fira Code", monospace; color: #79c0ff; font-size: .82rem; }
+    .config-table tr:last-child td { border-bottom: none; }
+
+    pre {
+      background: #161b22;
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: var(--radius-lg);
+      padding: 28px;
+      overflow-x: auto;
+      font-size: .85rem;
+      line-height: 1.7;
+    }
+
+    code {
+      font-family: "Cascadia Code", "Fira Code", "Consolas", monospace;
+    }
+
+    .token-key    { color: #79c0ff; }
+    .token-num    { color: #f2cc60; }
+    .token-bool   { color: #ff7b72; }
+    .token-punc   { color: rgba(255,255,255,.5); }
+    .token-comment { color: rgba(255,255,255,.35); font-style: italic; }
+
+    /* ── LOCALIZATION ─────────────────────────────── */
+    #localization { background: var(--white); }
+
+    .locale-grid {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-bottom: 40px;
+    }
+
+    .locale-card {
+      background: var(--neutral-100);
+      border: 2px solid var(--neutral-200);
+      border-radius: var(--radius-lg);
+      padding: 20px 28px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      transition: border-color .2s, box-shadow .2s;
+    }
+
+    .locale-card:hover { border-color: var(--blue); box-shadow: var(--shadow-sm); }
+
+    .locale-flag { font-size: 2rem; line-height: 1; }
+    .locale-name { font-weight: 700; font-size: 1rem; }
+    .locale-code { font-size: .78rem; color: var(--neutral-600); font-family: monospace; }
+
+    .locale-add {
+      background: var(--blue-light);
+      border: 2px dashed var(--blue);
+      color: var(--blue);
+    }
+
+    .locale-add .locale-flag { font-size: 1.6rem; }
+    .locale-add .locale-name { color: var(--blue); }
+
+    .callout {
+      background: var(--blue-light);
+      border-left: 4px solid var(--blue);
+      border-radius: 0 var(--radius) var(--radius) 0;
+      padding: 16px 20px;
+      font-size: .9rem;
+      color: var(--blue-dark);
+      line-height: 1.6;
+    }
+
+    .callout strong { font-weight: 700; }
+
+    /* ── INSTALL CTA ──────────────────────────────── */
+    #install { background: linear-gradient(135deg, #0063b1 0%, #0078d4 100%); color: var(--white); text-align: center; }
+    #install .section-title { color: var(--white); }
+    #install .section-lead  { color: rgba(255,255,255,.8); margin: 0 auto 40px; }
+
+    .install-steps {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 24px;
+      margin-bottom: 48px;
+      text-align: left;
+    }
+
+    .install-step {
+      background: rgba(255,255,255,.1);
+      border: 1px solid rgba(255,255,255,.2);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+    }
+
+    .install-step-num {
+      font-size: .72rem;
+      font-weight: 700;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      opacity: .65;
+      margin-bottom: 8px;
+    }
+
+    .install-step h3 { font-size: .95rem; font-weight: 700; margin-bottom: 6px; }
+    .install-step p  { font-size: .85rem; opacity: .8; line-height: 1.55; }
+
+    .install-actions { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+
+    /* ── FOOTER ───────────────────────────────────── */
+    footer {
+      background: var(--neutral-900);
+      color: rgba(255,255,255,.6);
+      padding: 48px 24px;
+    }
+
+    .footer-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 24px;
+    }
+
+    .footer-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--white);
+      font-weight: 700;
+      font-size: .95rem;
+    }
+
+    .footer-links {
+      display: flex;
+      gap: 24px;
+      list-style: none;
+    }
+
+    .footer-links a {
+      color: rgba(255,255,255,.5);
+      text-decoration: none;
+      font-size: .85rem;
+      transition: color .15s;
+    }
+
+    .footer-links a:hover { color: var(--white); }
+
+    .footer-copy { font-size: .8rem; color: rgba(255,255,255,.35); }
+
+    /* ── RESPONSIVE ───────────────────────────────── */
+    @media (max-width: 600px) {
+      nav .nav-links { display: none; }
+      .hero { padding: 72px 20px 88px; }
+      .hero-stats { gap: 28px; }
+      .steps::before { display: none; }
+      .step { padding-bottom: 32px; }
+      section { padding: 60px 20px; }
+    }
+
+    /* ── SCROLL REVEAL ────────────────────────────── */
+    .reveal { opacity: 0; transform: translateY(20px); transition: opacity .5s ease, transform .5s ease; }
+    .reveal.visible { opacity: 1; transform: none; }
+  </style>
+</head>
+<body>
+
+<!-- ─── NAVIGATION ───────────────────────────────────────────── -->
+<nav>
+  <div class="nav-inner">
+    <a class="nav-logo" href="#">
+      <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect width="28" height="28" rx="6" fill="#0078d4"/>
+        <path d="M8 8h8l4 4v10H8V8z" fill="white" fill-opacity=".3"/>
+        <path d="M16 8v4h4" stroke="white" stroke-width="1.5" stroke-linejoin="round"/>
+        <rect x="10" y="15" width="8" height="1.5" rx=".75" fill="white"/>
+        <rect x="10" y="18" width="5" height="1.5" rx=".75" fill="white"/>
+        <circle cx="20" cy="20" r="5" fill="#00b294"/>
+        <path d="M17.5 20l1.5 1.5 3-2.5" stroke="white" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      AutoSave for Office
+    </a>
+    <ul class="nav-links">
+      <li><a href="#features">Features</a></li>
+      <li><a href="#how-it-works">How it works</a></li>
+      <li><a href="#config">IT Config</a></li>
+      <li><a href="#localization">Localization</a></li>
+      <li><a href="manifest.xml" class="nav-cta">Download Manifest</a></li>
+    </ul>
+  </div>
+</nav>
+
+<!-- ─── HERO ─────────────────────────────────────────────────── -->
+<section class="hero">
+  <div class="hero-inner">
+    <div class="hero-badge">
+      <span></span>
+      Active &amp; production-ready
+    </div>
+    <h1>Never lose your work <br><em>ever again.</em></h1>
+    <p class="hero-sub">
+      AutoSave for Office silently saves your Word, Excel, and PowerPoint documents
+      on a configurable schedule — no clicks, no interruptions, no lost work.
+    </p>
+    <div class="hero-actions">
+      <a href="manifest.xml" class="btn btn-primary">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 12l-4-4h2.5V4h3v4H12L8 12z"/><path d="M2 13h12v1.5H2z"/></svg>
+        Download Manifest
+      </a>
+      <a href="https://github.com/" class="btn btn-secondary" id="github-link">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+        View on GitHub
+      </a>
+    </div>
+    <div class="hero-stats">
+      <div class="stat">
+        <div class="stat-value">3</div>
+        <div class="stat-label">Office apps</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value">3</div>
+        <div class="stat-label">Languages built-in</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value">0</div>
+        <div class="stat-label">Backend required</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value">∞</div>
+        <div class="stat-label">Languages you can add</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── FEATURES ─────────────────────────────────────────────── -->
+<section id="features">
+  <div class="section-inner">
+    <span class="section-tag">Features</span>
+    <h2 class="section-title">Everything an IT team needs,<br>nothing users have to think about.</h2>
+    <p class="section-lead">
+      AutoSave for Office is designed for enterprise environments where data integrity matters.
+      It works silently in the background while staying fully configurable by administrators.
+    </p>
+
+    <div class="features-grid">
+
+      <div class="feature-card reveal">
+        <div class="feature-icon icon-blue">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18M15 3v18M3 9h18M3 15h18"/></svg>
+        </div>
+        <h3>Works across all Office apps</h3>
+        <p>A single add-in manifest covers Word, Excel, and PowerPoint. Each host uses the appropriate native save API automatically.</p>
+        <div class="feature-hosts">
+          <span class="host-pill pill-word">Word</span>
+          <span class="host-pill pill-excel">Excel</span>
+          <span class="host-pill pill-ppt">PowerPoint</span>
+        </div>
+      </div>
+
+      <div class="feature-card reveal">
+        <div class="feature-icon icon-teal">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        </div>
+        <h3>Configurable save interval</h3>
+        <p>IT sets the default interval, minimum and maximum bounds. Users can personalise within those bounds — or you can lock it entirely.</p>
+      </div>
+
+      <div class="feature-card reveal">
+        <div class="feature-icon icon-purple">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+        </div>
+        <h3>Multi-language support</h3>
+        <p>Ships with English, French, and Dutch. Drop any additional locale JSON file on the server — no rebuild, no redeployment needed.</p>
+      </div>
+
+      <div class="feature-card reveal">
+        <div class="feature-icon icon-orange">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93A10 10 0 1 1 4.93 19.07M12 2v2M12 20v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M2 12h2M20 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+        </div>
+        <h3>Zero infrastructure</h3>
+        <p>Fully client-side. No Azure Functions, no database, no backend. Host the static files on any HTTPS server — including GitHub Pages.</p>
+      </div>
+
+      <div class="feature-card reveal">
+        <div class="feature-icon icon-red">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        </div>
+        <h3>Protected View aware</h3>
+        <p>Detects read-only and Protected View documents. Disables the timer silently and shows a localized notice — no crashes, no error dialogs.</p>
+      </div>
+
+      <div class="feature-card reveal">
+        <div class="feature-icon icon-yellow">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        </div>
+        <h3>Shared runtime background saving</h3>
+        <p>Uses Office Shared Runtime so the autosave timer keeps running even when the task pane is closed — transparently, in the background.</p>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ─── HOW IT WORKS ──────────────────────────────────────────── -->
+<section id="how-it-works">
+  <div class="section-inner">
+    <span class="section-tag">How it works</span>
+    <h2 class="section-title">Up and running in four steps.</h2>
+    <p class="section-lead section-lead--center">
+      Deploy once via Microsoft 365 Admin Center and every user in your tenant gets automatic document saving — with no manual installation.
+    </p>
+
+    <div class="steps">
+      <div class="step reveal">
+        <div class="step-num">1</div>
+        <h3>Download the manifest</h3>
+        <p>Grab <code>manifest.xml</code> and update the production URL to your GitHub Pages or static hosting address.</p>
+      </div>
+      <div class="step reveal">
+        <div class="step-num">2</div>
+        <h3>Deploy to Microsoft 365</h3>
+        <p>Upload the manifest in the Microsoft 365 Admin Center under Integrated Apps. Target groups or the full tenant.</p>
+      </div>
+      <div class="step reveal">
+        <div class="step-num">3</div>
+        <h3>Documents save automatically</h3>
+        <p>The add-in activates on every document open. The timer starts immediately and saves silently in the background.</p>
+      </div>
+      <div class="step reveal">
+        <div class="step-num">4</div>
+        <h3>Configure without rebuilding</h3>
+        <p>Edit <code>config/autosave-config.json</code> or add a locale file on the server. Changes take effect on the next document open.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── CONFIG ───────────────────────────────────────────────── -->
+<section id="config">
+  <div class="section-inner">
+    <span class="section-tag">IT Configuration</span>
+    <h2 class="section-title">One JSON file. Full control.</h2>
+    <p class="section-lead">
+      No code changes, no rebuilds. Edit <code>config/autosave-config.json</code> on your server
+      and the new settings take effect the next time a user opens a document.
+    </p>
+
+    <div class="config-grid">
+      <div>
+        <pre><code><span class="token-punc">{</span>
+  <span class="token-key">"defaultIntervalMinutes"</span><span class="token-punc">:</span> <span class="token-num">5</span><span class="token-punc">,</span>  <span class="token-comment">// default save interval</span>
+  <span class="token-key">"minIntervalMinutes"</span><span class="token-punc">:</span>     <span class="token-num">2</span><span class="token-punc">,</span>  <span class="token-comment">// user cannot go below this</span>
+  <span class="token-key">"maxIntervalMinutes"</span><span class="token-punc">:</span>    <span class="token-num">60</span><span class="token-punc">,</span>  <span class="token-comment">// user cannot go above this</span>
+  <span class="token-key">"allowUserOverride"</span><span class="token-punc">:</span>    <span class="token-bool">true</span>   <span class="token-comment">// set false to lock interval</span>
+<span class="token-punc">}</span></code></pre>
+      </div>
+
+      <div>
+        <table class="config-table">
+          <thead>
+            <tr><th>Field</th><th>What it controls</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>defaultIntervalMinutes</td>
+              <td>How often to save (in minutes) for new documents or when no user preference exists.</td>
+            </tr>
+            <tr>
+              <td>minIntervalMinutes</td>
+              <td>The lowest interval a user can select. Prevents aggressive saving on shared drives.</td>
+            </tr>
+            <tr>
+              <td>maxIntervalMinutes</td>
+              <td>The highest interval a user can select. Ensures a reasonable maximum.</td>
+            </tr>
+            <tr>
+              <td>allowUserOverride</td>
+              <td>Set to <code>false</code> to hide the settings panel and lock the interval for all users.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── LOCALIZATION ─────────────────────────────────────────── -->
+<section id="localization">
+  <div class="section-inner">
+    <span class="section-tag">Localization</span>
+    <h2 class="section-title">Speaks your users' language.</h2>
+    <p class="section-lead">
+      The add-in auto-detects the Office display language and loads the matching locale file.
+      Fallback chain: exact locale → base language → English. Zero hardcoded strings.
+    </p>
+
+    <div class="locale-grid">
+      <div class="locale-card reveal">
+        <div class="locale-flag">🇬🇧</div>
+        <div>
+          <div class="locale-name">English</div>
+          <div class="locale-code">en.json</div>
+        </div>
+      </div>
+      <div class="locale-card reveal">
+        <div class="locale-flag">🇫🇷</div>
+        <div>
+          <div class="locale-name">French</div>
+          <div class="locale-code">fr.json</div>
+        </div>
+      </div>
+      <div class="locale-card reveal">
+        <div class="locale-flag">🇳🇱</div>
+        <div>
+          <div class="locale-name">Dutch</div>
+          <div class="locale-code">nl.json</div>
+        </div>
+      </div>
+      <div class="locale-card locale-add reveal">
+        <div class="locale-flag">＋</div>
+        <div>
+          <div class="locale-name">Add your language</div>
+          <div class="locale-code">de.json, es.json, …</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="callout">
+      <strong>No rebuild needed.</strong> Drop a new <code>locales/xx.json</code> file on your static server.
+      The add-in fetches locale files at runtime, so a new language is live immediately — no npm, no webpack, no CI pipeline.
+    </div>
+  </div>
+</section>
+
+<!-- ─── INSTALL CTA ───────────────────────────────────────────── -->
+<section id="install">
+  <div class="section-inner">
+    <h2 class="section-title">Ready to deploy?</h2>
+    <p class="section-lead">
+      Follow the four steps below and your entire organization will have automatic document saving within minutes.
+    </p>
+
+    <div class="install-steps">
+      <div class="install-step reveal">
+        <div class="install-step-num">Step 01</div>
+        <h3>Download the manifest</h3>
+        <p>Get <code>manifest.xml</code> and update the URL to your hosted address.</p>
+      </div>
+      <div class="install-step reveal">
+        <div class="install-step-num">Step 02</div>
+        <h3>Host the static files</h3>
+        <p>Push the <code>dist/</code> folder to GitHub Pages, Azure Static Web Apps, or any HTTPS server.</p>
+      </div>
+      <div class="install-step reveal">
+        <div class="install-step-num">Step 03</div>
+        <h3>Upload to Admin Center</h3>
+        <p>Go to Microsoft 365 Admin Center → Integrated Apps → Upload custom app → upload the manifest.</p>
+      </div>
+      <div class="install-step reveal">
+        <div class="install-step-num">Step 04</div>
+        <h3>Target users or tenant</h3>
+        <p>Select specific groups or deploy to the whole tenant. Users get the add-in on their next Office launch.</p>
+      </div>
+    </div>
+
+    <div class="install-actions">
+      <a href="manifest.xml" class="btn btn-primary">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 12l-4-4h2.5V4h3v4H12L8 12z"/><path d="M2 13h12v1.5H2z"/></svg>
+        Download manifest.xml
+      </a>
+      <a href="https://github.com/" class="btn btn-secondary" id="github-link-2">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+        View source on GitHub
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- ─── FOOTER ────────────────────────────────────────────────── -->
+<footer>
+  <div class="footer-inner">
+    <div class="footer-brand">
+      <svg width="22" height="22" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect width="28" height="28" rx="6" fill="#0078d4"/>
+        <path d="M8 8h8l4 4v10H8V8z" fill="white" fill-opacity=".3"/>
+        <circle cx="20" cy="20" r="5" fill="#00b294"/>
+        <path d="M17.5 20l1.5 1.5 3-2.5" stroke="white" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      AutoSave for Office
+    </div>
+    <ul class="footer-links">
+      <li><a href="#features">Features</a></li>
+      <li><a href="#config">IT Config</a></li>
+      <li><a href="manifest.xml">Manifest</a></li>
+      <li><a href="https://github.com/" id="github-footer">GitHub</a></li>
+    </ul>
+    <p class="footer-copy">Built with Office.js &amp; TypeScript &nbsp;·&nbsp; MIT License</p>
+  </div>
+</footer>
+
+<script>
+  // Scroll-reveal
+  const reveals = document.querySelectorAll('.reveal');
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); io.unobserve(e.target); } });
+  }, { threshold: 0.12 });
+  reveals.forEach(el => io.observe(el));
+
+  // Inject GitHub repo URL automatically when hosted on GitHub Pages
+  (function () {
+    const host = location.hostname;
+    if (host.endsWith('.github.io')) {
+      const parts = host.split('.');
+      const user = parts[0];
+      const repo = location.pathname.split('/').filter(Boolean)[0] || '';
+      const url = repo ? `https://github.com/${user}/${repo}` : `https://github.com/${user}`;
+      ['github-link', 'github-link-2', 'github-footer'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.href = url;
+      });
+    }
+  })();
+</script>
+
+</body>
+</html>

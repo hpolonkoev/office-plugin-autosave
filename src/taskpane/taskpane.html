@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AutoSave</title>
+    <script
+      type="text/javascript"
+      src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"
+    ></script>
+  </head>
+  <body>
+    <div class="taskpane">
+
+      <!-- Header -->
+      <header class="taskpane__header">
+        <span id="addin-title" class="taskpane__title"></span>
+        <div id="toggle-row" class="toggle-row">
+          <label class="toggle-switch" for="toggle-checkbox">
+            <input type="checkbox" id="toggle-checkbox" checked />
+            <span class="toggle-switch__track"></span>
+          </label>
+          <span id="toggle-label" class="toggle-row__label"></span>
+        </div>
+      </header>
+
+      <!-- Notification banner -->
+      <div id="notification-banner" class="notification" style="display:none;"></div>
+
+      <!-- Status -->
+      <section class="taskpane__status">
+        <span id="last-saved-label" class="status__label"></span>
+        <span id="last-saved-value" class="status__value"></span>
+      </section>
+
+      <!-- Settings panel (shown when allowUserOverride = true) -->
+      <section id="settings-panel" class="settings-panel">
+        <div class="interval-row">
+          <label id="interval-label-text" class="interval-row__label" for="interval-slider"></label>
+          <input
+            type="range"
+            id="interval-slider"
+            class="interval-row__slider"
+            min="2"
+            max="60"
+            value="5"
+          />
+          <input
+            type="number"
+            id="interval-number"
+            class="interval-row__number"
+            min="2"
+            max="60"
+            value="5"
+          />
+          <span id="interval-unit-text" class="interval-row__unit"></span>
+        </div>
+        <button id="save-settings-btn" class="btn btn--primary"></button>
+      </section>
+
+      <!-- Managed by IT message (shown when allowUserOverride = false) -->
+      <section id="managed-by-it-msg" class="managed-msg" style="display:none;">
+        <span id="managed-by-it-text"></span>
+      </section>
+
+      <!-- Footer -->
+      <footer class="taskpane__footer">
+        v<span id="version-text"></span>
+      </footer>
+
+    </div>
+  </body>
+</html>

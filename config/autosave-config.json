@@ -1,0 +1,6 @@
+{
+  "defaultIntervalMinutes": 1,
+  "minIntervalMinutes": 1,
+  "maxIntervalMinutes": 60,
+  "allowUserOverride": true
+}

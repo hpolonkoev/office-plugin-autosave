@@ -1,0 +1,16 @@
+{
+  "addin_name": "Automatisch opslaan",
+  "activated_msg": "Automatisch opslaan is actief op de achtergrond. U kunt dit paneel sluiten.",
+  "toggle_on": "Automatisch opslaan aan",
+  "toggle_off": "Automatisch opslaan uit",
+  "last_saved": "Laatst opgeslagen:",
+  "never_saved": "Nog niet opgeslagen in deze sessie",
+  "interval_label": "Opslaan elke",
+  "interval_unit": "min",
+  "save_settings": "Instellingen opslaan",
+  "settings_saved": "Instellingen opgeslagen",
+  "unsaved_document": "Het document is nog niet opgeslagen op schijf. Sla het document eerst op.",
+  "save_error": "Automatisch opslaan mislukt. Zie de console voor details.",
+  "managed_by_it": "Het interval wordt beheerd door uw IT-beheerder.",
+  "protected_view": "Het document bevindt zich in de beveiligde weergave of is alleen-lezen. Automatisch opslaan is uitgeschakeld."
+}

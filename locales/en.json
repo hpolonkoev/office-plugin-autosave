@@ -1,0 +1,16 @@
+{
+  "addin_name": "AutoSave",
+  "activated_msg": "AutoSave is now running in the background. You can close this panel.",
+  "toggle_on": "AutoSave On",
+  "toggle_off": "AutoSave Off",
+  "last_saved": "Last saved:",
+  "never_saved": "Not yet saved this session",
+  "interval_label": "Save every",
+  "interval_unit": "min",
+  "save_settings": "Save Settings",
+  "settings_saved": "Settings saved",
+  "unsaved_document": "Document has not been saved to disk yet. Please save the document first.",
+  "save_error": "AutoSave failed. Check the console for details.",
+  "managed_by_it": "Interval is managed by your IT administrator.",
+  "protected_view": "Document is in Protected View or read-only. AutoSave is disabled."
+}

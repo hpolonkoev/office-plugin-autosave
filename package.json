@@ -1,0 +1,31 @@
+{
+  "name": "office-plugin-autosave",
+  "version": "1.0.0",
+  "description": "Microsoft Office Web Add-in that automatically saves documents at a configurable interval",
+  "scripts": {
+    "build": "webpack --mode production",
+    "build:dev": "webpack --mode development",
+    "start": "office-addin-dev-certs install --days 365 && webpack serve --mode development",
+    "lint": "eslint src --ext .ts"
+  },
+  "dependencies": {
+    "@microsoft/office-js": "^1.1.0"
+  },
+  "devDependencies": {
+    "@types/office-js": "^1.0.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "copy-webpack-plugin": "^11.0.0",
+    "css-loader": "^6.8.1",
+    "eslint": "^8.0.0",
+    "html-webpack-plugin": "^5.5.3",
+    "mini-css-extract-plugin": "^2.7.6",
+    "office-addin-dev-certs": "^2.0.7",
+    "style-loader": "^3.3.3",
+    "ts-loader": "^9.4.4",
+    "typescript": "^5.1.6",
+    "webpack": "^5.88.2",
+    "webpack-cli": "^5.1.4",
+    "webpack-dev-server": "^4.15.1"
+  }
+}

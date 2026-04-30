@@ -1,0 +1,16 @@
+{
+  "addin_name": "Sauvegarde automatique",
+  "activated_msg": "La sauvegarde automatique est active en arrière-plan. Vous pouvez fermer ce panneau.",
+  "toggle_on": "Sauvegarde activée",
+  "toggle_off": "Sauvegarde désactivée",
+  "last_saved": "Dernière sauvegarde :",
+  "never_saved": "Pas encore sauvegardé cette session",
+  "interval_label": "Sauvegarder toutes les",
+  "interval_unit": "min",
+  "save_settings": "Enregistrer les paramètres",
+  "settings_saved": "Paramètres enregistrés",
+  "unsaved_document": "Le document n'a pas encore été enregistré sur le disque. Veuillez d'abord enregistrer le document.",
+  "save_error": "La sauvegarde automatique a échoué. Consultez la console pour plus de détails.",
+  "managed_by_it": "L'intervalle est géré par votre administrateur informatique.",
+  "protected_view": "Le document est en mode protégé ou en lecture seule. La sauvegarde automatique est désactivée."
+}
