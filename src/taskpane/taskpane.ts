@@ -9,7 +9,7 @@ interface AdminConfig {
 }
 
 const SETTINGS_KEY = "autosave_interval_minutes";
-const VERSION = "1.0.2";
+const VERSION = "1.0.3";
 
 // State lives on `window` so it survives script re-evaluation when the task
 // pane HTML is reloaded inside the same shared runtime. Module-level `let`
@@ -182,9 +182,13 @@ async function performSave(): Promise<void> {
         context.workbook.save(Excel.SaveBehavior.save);
         await context.sync();
       });
+    } else if (host === Office.HostType.Word) {
+      await Word.run(async (context) => {
+        context.document.save();
+        await context.sync();
+      });
     } else {
-      // Word and PowerPoint — saveAsync works reliably in headless background
-      // contexts where Word.run() / the Word JS API may not be fully available.
+      // PowerPoint — saveAsync exists at runtime but is absent from @types/office-js
       await new Promise<void>((resolve, reject) => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (Office.context.document as any).saveAsync((result: Office.AsyncResult<void>) => {
