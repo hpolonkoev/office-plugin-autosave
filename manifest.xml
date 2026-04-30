@@ -6,7 +6,7 @@
   xsi:type="TaskPaneApp">
 
   <Id>a1b2c3d4-e5f6-7890-abcd-ef1234567890</Id>
-  <Version>1.0.0</Version>
+  <Version>1.0.1</Version>
   <ProviderName>Efficy</ProviderName>
   <DefaultLocale>en-US</DefaultLocale>
   <DisplayName DefaultValue="AutoSave Add-in" />
@@ -187,6 +187,7 @@
               <Description resid="GetStarted.Description" />
               <LearnMoreUrl resid="GetStarted.LearnMoreUrl" />
             </GetStarted>
+            <FunctionFile resid="Taskpane.Url" />
             <ExtensionPoint xsi:type="LaunchEvent">
               <LaunchEvents>
                 <LaunchEvent Type="OnDocumentOpen" FunctionName="onDocumentOpen" />
@@ -233,6 +234,7 @@
               <Description resid="GetStarted.Description" />
               <LearnMoreUrl resid="GetStarted.LearnMoreUrl" />
             </GetStarted>
+            <FunctionFile resid="Taskpane.Url" />
             <ExtensionPoint xsi:type="LaunchEvent">
               <LaunchEvents>
                 <LaunchEvent Type="OnDocumentOpen" FunctionName="onDocumentOpen" />
@@ -279,6 +281,7 @@
               <Description resid="GetStarted.Description" />
               <LearnMoreUrl resid="GetStarted.LearnMoreUrl" />
             </GetStarted>
+            <FunctionFile resid="Taskpane.Url" />
             <ExtensionPoint xsi:type="LaunchEvent">
               <LaunchEvents>
                 <LaunchEvent Type="OnDocumentOpen" FunctionName="onDocumentOpen" />

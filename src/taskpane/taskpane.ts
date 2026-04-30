@@ -9,19 +9,49 @@ interface AdminConfig {
 }
 
 const SETTINGS_KEY = "autosave_interval_minutes";
-const VERSION = "1.0.0";
+const VERSION = "1.0.1";
 
-let config: AdminConfig = {
-  defaultIntervalMinutes: 1,
-  minIntervalMinutes: 1,
-  maxIntervalMinutes: 60,
-  allowUserOverride: true,
+// State lives on `window` so it survives script re-evaluation when the task
+// pane HTML is reloaded inside the same shared runtime. Module-level `let`
+// variables reset on every re-eval; `window` properties do not.
+declare global {
+  interface Window {
+    __as_initialized: boolean;
+    __as_timerHandle: ReturnType<typeof setInterval> | null;
+    __as_enabled: boolean;
+    __as_intervalMinutes: number;
+    __as_lastSaved: string;
+    __as_isReadOnly: boolean;
+    __as_confirmedFilePath: boolean;
+    __as_config: AdminConfig | null;
+  }
+}
+
+const state = {
+  get initialized(): boolean { return window.__as_initialized ?? false; },
+  set initialized(v: boolean) { window.__as_initialized = v; },
+
+  get timerHandle(): ReturnType<typeof setInterval> | null { return window.__as_timerHandle ?? null; },
+  set timerHandle(v: ReturnType<typeof setInterval> | null) { window.__as_timerHandle = v; },
+
+  get enabled(): boolean { return window.__as_enabled ?? true; },
+  set enabled(v: boolean) { window.__as_enabled = v; },
+
+  get intervalMinutes(): number { return window.__as_intervalMinutes ?? 1; },
+  set intervalMinutes(v: number) { window.__as_intervalMinutes = v; },
+
+  get lastSaved(): string { return window.__as_lastSaved ?? ""; },
+  set lastSaved(v: string) { window.__as_lastSaved = v; },
+
+  get isReadOnly(): boolean { return window.__as_isReadOnly ?? false; },
+  set isReadOnly(v: boolean) { window.__as_isReadOnly = v; },
+
+  get confirmedFilePath(): boolean { return window.__as_confirmedFilePath ?? false; },
+  set confirmedFilePath(v: boolean) { window.__as_confirmedFilePath = v; },
+
+  get config(): AdminConfig | null { return window.__as_config ?? null; },
+  set config(v: AdminConfig | null) { window.__as_config = v; },
 };
-let intervalMinutes = config.defaultIntervalMinutes;
-let timerHandle: ReturnType<typeof setInterval> | null = null;
-let isEnabled = true;
-let isReadOnly = false;
-let confirmedFilePath = false;
 
 // ── Logging ───────────────────────────────────────────────────────────────────
 
@@ -65,29 +95,35 @@ function clearNotification(): void {
 
 // ── Config loading ────────────────────────────────────────────────────────────
 
-async function loadConfig(): Promise<void> {
+const CONFIG_DEFAULTS: AdminConfig = {
+  defaultIntervalMinutes: 1,
+  minIntervalMinutes: 1,
+  maxIntervalMinutes: 60,
+  allowUserOverride: true,
+};
+
+async function loadConfig(): Promise<AdminConfig> {
   try {
     const response = await fetch("config/autosave-config.json");
-    if (response.ok) {
-      config = (await response.json()) as AdminConfig;
-    }
+    if (response.ok) return (await response.json()) as AdminConfig;
   } catch (err) {
     console.warn("Could not load autosave-config.json, using defaults.", err);
   }
+  return { ...CONFIG_DEFAULTS };
 }
 
 // ── User settings ─────────────────────────────────────────────────────────────
 
-function loadUserInterval(): number {
+function loadUserInterval(cfg: AdminConfig): number {
   try {
     const stored = Office.context.document.settings.get(SETTINGS_KEY) as number | null;
     if (stored !== null && stored !== undefined) {
-      return Math.min(Math.max(stored, config.minIntervalMinutes), config.maxIntervalMinutes);
+      return Math.min(Math.max(stored, cfg.minIntervalMinutes), cfg.maxIntervalMinutes);
     }
   } catch {
-    // settings not available
+    // settings not available yet
   }
-  return config.defaultIntervalMinutes;
+  return cfg.defaultIntervalMinutes;
 }
 
 function saveUserInterval(minutes: number): void {
@@ -107,14 +143,14 @@ function saveUserInterval(minutes: number): void {
 // ── Save logic ────────────────────────────────────────────────────────────────
 
 async function hasFilePath(): Promise<boolean> {
-  if (confirmedFilePath) return true;
+  if (state.confirmedFilePath) return true;
   return new Promise<boolean>((resolve) => {
     try {
       Office.context.document.getFilePropertiesAsync((result) => {
         if (result.status === Office.AsyncResultStatus.Succeeded) {
           const url = result.value.url;
           const hasPath = !!url && url.trim() !== "";
-          if (hasPath) confirmedFilePath = true;
+          if (hasPath) state.confirmedFilePath = true;
           resolve(hasPath);
         } else {
           resolve(false);
@@ -127,8 +163,8 @@ async function hasFilePath(): Promise<boolean> {
 }
 
 async function performSave(): Promise<void> {
-  log(`Timer fired — isEnabled: ${isEnabled} isReadOnly: ${isReadOnly}`);
-  if (!isEnabled || isReadOnly) return;
+  log(`Timer fired — enabled: ${state.enabled}, readOnly: ${state.isReadOnly}`);
+  if (!state.enabled || state.isReadOnly) return;
 
   const hasSavedPath = await hasFilePath();
   log(`hasFilePath: ${hasSavedPath}`);
@@ -161,7 +197,7 @@ async function performSave(): Promise<void> {
           } else {
             const errMsg = result.error?.message ?? "Unknown error";
             if (errMsg.toLowerCase().includes("read-only") || errMsg.toLowerCase().includes("protected")) {
-              isReadOnly = true;
+              state.isReadOnly = true;
               setNotification(t("protected_view"), "warning");
               stopTimer();
               resolve();
@@ -174,8 +210,9 @@ async function performSave(): Promise<void> {
     }
 
     log("Save succeeded");
+    state.lastSaved = new Date().toLocaleTimeString();
     clearNotification();
-    setText("last-saved-value", new Date().toLocaleTimeString());
+    setText("last-saved-value", state.lastSaved);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     log(`Save failed: ${message}`);
@@ -187,27 +224,64 @@ async function performSave(): Promise<void> {
 
 function startTimer(): void {
   stopTimer();
-  if (isReadOnly) return;
-  log(`Timer started — interval: ${intervalMinutes} min`);
-  timerHandle = setInterval(() => {
+  if (state.isReadOnly) return;
+  log(`Timer started — interval: ${state.intervalMinutes} min`);
+  state.timerHandle = setInterval(() => {
     performSave().catch((err) => log(`Unhandled save error: ${err}`));
-  }, intervalMinutes * 60 * 1000);
+  }, state.intervalMinutes * 60 * 1000);
 }
 
 function stopTimer(): void {
-  if (timerHandle !== null) {
-    clearInterval(timerHandle);
-    timerHandle = null;
+  if (state.timerHandle !== null) {
+    clearInterval(state.timerHandle);
+    state.timerHandle = null;
   }
+}
+
+// ── Background initialization (idempotent) ────────────────────────────────────
+// Safe to call from both onDocumentOpen and Office.onReady. The initialized
+// guard means the timer is only ever started once per runtime lifetime,
+// regardless of how many times the task pane HTML is reloaded.
+
+async function initBackground(): Promise<void> {
+  if (state.initialized) {
+    log("Runtime already initialized — skipping re-init");
+    return;
+  }
+
+  const cfg = await loadConfig();
+  state.config = cfg;
+
+  await initI18n(Office.context.displayLanguage ?? "en");
+
+  // Use document.mode for read-only detection. getFilePropertiesAsync returns
+  // a failed result for any unsaved document (no URL), which is NOT the same
+  // as protected/read-only — that bug caused the add-in to disable itself on
+  // brand-new documents.
+  try {
+    state.isReadOnly = Office.context.document.mode === Office.DocumentMode.ReadOnly;
+  } catch {
+    state.isReadOnly = false;
+  }
+
+  state.intervalMinutes = loadUserInterval(cfg);
+  state.enabled = true;
+  state.initialized = true;
+
+  if (!state.isReadOnly) {
+    startTimer();
+  }
+
+  log(`Background ready — interval: ${state.intervalMinutes}m, readOnly: ${state.isReadOnly}`);
 }
 
 // ── UI ────────────────────────────────────────────────────────────────────────
 
 function applyStrings(): void {
   setText("addin-title", t("addin_name"));
-  setText("toggle-label", isEnabled ? t("toggle_on") : t("toggle_off"));
+  setText("toggle-label", state.enabled ? t("toggle_on") : t("toggle_off"));
   setText("last-saved-label", t("last_saved"));
-  setText("last-saved-value", t("never_saved"));
+  setText("last-saved-value", state.lastSaved || t("never_saved"));
   setText("interval-label-text", t("interval_label"));
   setText("interval-unit-text", t("interval_unit"));
   setText("save-settings-btn", t("save_settings"));
@@ -216,17 +290,18 @@ function applyStrings(): void {
 }
 
 function renderSettingsPanel(): void {
-  if (config.allowUserOverride) {
+  const cfg = state.config!;
+  if (cfg.allowUserOverride) {
     show("settings-panel");
     hide("managed-by-it-msg");
     const slider = el<HTMLInputElement>("interval-slider");
     const numberInput = el<HTMLInputElement>("interval-number");
-    slider.min = String(config.minIntervalMinutes);
-    slider.max = String(config.maxIntervalMinutes);
-    slider.value = String(intervalMinutes);
-    numberInput.min = String(config.minIntervalMinutes);
-    numberInput.max = String(config.maxIntervalMinutes);
-    numberInput.value = String(intervalMinutes);
+    slider.min = String(cfg.minIntervalMinutes);
+    slider.max = String(cfg.maxIntervalMinutes);
+    slider.value = String(state.intervalMinutes);
+    numberInput.min = String(cfg.minIntervalMinutes);
+    numberInput.max = String(cfg.maxIntervalMinutes);
+    numberInput.value = String(state.intervalMinutes);
   } else {
     hide("settings-panel");
     show("managed-by-it-msg");
@@ -236,17 +311,19 @@ function renderSettingsPanel(): void {
 
 function updateToggleUI(): void {
   const checkbox = el<HTMLInputElement>("toggle-checkbox");
-  checkbox.checked = isEnabled;
-  setText("toggle-label", isEnabled ? t("toggle_on") : t("toggle_off"));
-  el<HTMLDivElement>("toggle-row").classList.toggle("toggle-row--off", !isEnabled);
+  checkbox.checked = state.enabled;
+  setText("toggle-label", state.enabled ? t("toggle_on") : t("toggle_off"));
+  el<HTMLDivElement>("toggle-row").classList.toggle("toggle-row--off", !state.enabled);
 }
 
 function wireEvents(): void {
+  const cfg = state.config!;
+
   const checkbox = el<HTMLInputElement>("toggle-checkbox");
   checkbox.addEventListener("change", () => {
-    isEnabled = checkbox.checked;
+    state.enabled = checkbox.checked;
     updateToggleUI();
-    if (isEnabled) startTimer(); else stopTimer();
+    if (state.enabled) startTimer(); else stopTimer();
   });
 
   const slider = el<HTMLInputElement>("interval-slider");
@@ -257,72 +334,59 @@ function wireEvents(): void {
   numberInput.addEventListener("input", () => {
     const val = parseInt(numberInput.value, 10);
     if (!isNaN(val)) {
-      slider.value = String(Math.min(Math.max(val, config.minIntervalMinutes), config.maxIntervalMinutes));
+      slider.value = String(Math.min(Math.max(val, cfg.minIntervalMinutes), cfg.maxIntervalMinutes));
     }
   });
 
   el<HTMLButtonElement>("save-settings-btn").addEventListener("click", () => {
     const raw = parseInt(numberInput.value, 10);
     if (isNaN(raw)) return;
-    intervalMinutes = Math.min(Math.max(raw, config.minIntervalMinutes), config.maxIntervalMinutes);
-    slider.value = String(intervalMinutes);
-    numberInput.value = String(intervalMinutes);
-    saveUserInterval(intervalMinutes);
-    if (isEnabled) startTimer();
+    state.intervalMinutes = Math.min(Math.max(raw, cfg.minIntervalMinutes), cfg.maxIntervalMinutes);
+    slider.value = String(state.intervalMinutes);
+    numberInput.value = String(state.intervalMinutes);
+    saveUserInterval(state.intervalMinutes);
+    if (state.enabled) startTimer();
   });
 }
 
 // ── Event-based activation ────────────────────────────────────────────────────
-// Registered at module load time so Office can find the function when the
-// OnDocumentOpen event fires — before Office.onReady has even run.
+// Registered synchronously at module load so Office can find the function
+// as soon as the shared runtime loads for OnDocumentOpen.
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-(Office as any).actions?.associate("onDocumentOpen", (event: any) => {
+(Office as any).actions?.associate("onDocumentOpen", async (event: any) => {
   log("OnDocumentOpen event received");
+  try {
+    await initBackground();
+  } catch (err) {
+    log(`onDocumentOpen init error: ${err}`);
+  }
   event.completed();
 });
 
 // ── Initialization ────────────────────────────────────────────────────────────
 
 Office.onReady(async () => {
-  const locale = Office.context.displayLanguage ?? "en";
+  // initBackground is idempotent — if onDocumentOpen already ran it, this
+  // call returns immediately. If the task pane is opened directly (no prior
+  // background load), this performs the full init.
+  await initBackground();
 
-  await loadConfig();
-  await initI18n(locale);
-
-  isReadOnly = await (async () => {
-    try {
-      return await new Promise<boolean>((resolve) => {
-        Office.context.document.getFilePropertiesAsync((result) => {
-          resolve(result.status !== Office.AsyncResultStatus.Succeeded);
-        });
-      });
-    } catch {
-      return false;
-    }
-  })();
-
-  intervalMinutes = loadUserInterval();
-
-  // Render UI — visible when user opens the task pane for settings.
+  // Re-render UI from current state each time the task pane is shown.
   applyStrings();
   renderSettingsPanel();
   wireEvents();
   updateToggleUI();
 
-  if (isReadOnly) {
+  if (state.isReadOnly) {
     setNotification(t("protected_view"), "warning");
-    isEnabled = false;
-    updateToggleUI();
-  } else {
-    startTimer();
-    // Persist auto-start so future document opens load the runtime automatically
-    try {
-      await Office.addin.setStartupBehavior(Office.StartupBehavior.load);
-    } catch {
-      // Not available in all hosts/versions — safe to ignore
-    }
   }
 
-  log("Runtime ready — autosave running in background");
+  try {
+    await Office.addin.setStartupBehavior(Office.StartupBehavior.load);
+  } catch {
+    // Not available in all hosts/versions — safe to ignore
+  }
+
+  log(`Task pane ready — timer running: ${state.timerHandle !== null}`);
 });
