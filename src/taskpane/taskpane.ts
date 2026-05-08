@@ -9,7 +9,7 @@ interface AdminConfig {
 }
 
 const SETTINGS_KEY = "autosave_interval_minutes";
-const VERSION = "1.0.4";
+const VERSION = "1.0.5";
 
 // State lives on `window` so it survives script re-evaluation when the task
 // pane HTML is reloaded inside the same shared runtime. Module-level `let`
@@ -194,8 +194,17 @@ async function performSave(): Promise<void> {
       });
     } else if (host === Office.HostType.Word) {
       await Word.run(async (context) => {
-        context.document.save();
+        // Check the document's saved state before saving — calling save() on
+        // an unchanged document still touches it and leaves Word's dirty flag
+        // set, causing a misleading "Save changes?" prompt on close.
+        context.document.load("saved");
         await context.sync();
+        if (!context.document.saved) {
+          context.document.save();
+          await context.sync();
+        } else {
+          log("Document already saved — skipping write");
+        }
       });
     } else {
       // PowerPoint — saveAsync exists at runtime but is absent from @types/office-js
